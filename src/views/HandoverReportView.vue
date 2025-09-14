@@ -35,8 +35,8 @@ const formatTime = (value) =>
 async function fetchReport() {
   loading.value = true;
   try {
-    // Konversi objek Date ke format YYYY-MM-DD untuk parameter API
-    const dateParam = new Date(selectedDate.value).toISOString().split("T")[0];
+    // Konversi objek Date ke format YYYY-MM-DD dalam waktu lokal
+    const dateParam = selectedDate.value.toLocaleDateString("en-CA"); // YYYY-MM-DD
     const response = await api.get("/reports/handover", { params: { date: dateParam } });
     reportData.value.pending = response.data.pending_reports || [];
     reportData.value.reconciled = response.data.reconciled_reports || [];

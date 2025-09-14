@@ -17,7 +17,7 @@ const attendanceSheet = reactive({
 });
 
 // State untuk tanggal dan hari libur
-const today = new Date().toISOString().substr(0, 10);
+const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" }).format(new Date());
 const selectedDate = ref(today);
 const holidays = ref([]); // Menyimpan daftar tanggal libur (string YYYY-MM-DD)
 const isHoliday = ref(false);
@@ -102,15 +102,15 @@ async function initialFetch() {
     console.log("=== END DEBUG ===");
 
     // --- PERBAIKAN LOGIKA UTAMA DI SINI ---
-    // Setelah semua data siap, kita cek tanggal hari ini
+    // Auto-select kelas jika hanya satu, terlepas dari status libur
+    if (teacherClasses.value && teacherClasses.value.length === 1) {
+      selectedClassId.value = teacherClasses.value[0].id;
+    }
+
+    // Kemudian cek tanggal hari ini
     if (isDateDisabled(new Date(selectedDate.value))) {
       isHoliday.value = true;
       holidayDescription.value = "Akhir Pekan atau Hari Libur Nasional";
-    } else {
-      // Jika tidak libur, baru kita coba auto-select kelas
-      if (teacherClasses.value && teacherClasses.value.length === 1) {
-        selectedClassId.value = teacherClasses.value[0].id;
-      }
     }
   } catch (e) {
     console.error("Initial fetch error:", e);
@@ -175,14 +175,14 @@ async function saveAttendance() {
 
     await api.post("/attendance", payload);
     isEditing.value = true; // Tandai bahwa data sudah ada setelah disimpan
-    // Sebaiknya gunakan komponen snackbar/notifikasi yang lebih baik dari alert
-    alert("Absensi berhasil disimpan!");
   } catch (e) {
     console.error("Save attendance error:", e);
     alert("Gagal menyimpan absensi: " + (e.response?.data?.message || e.message));
+    return;
   } finally {
     saving.value = false;
   }
+  snackbar.value = { show: true, text: "Absensi berhasil disimpan!", color: "success" };
 }
 
 async function refreshHolidays() {

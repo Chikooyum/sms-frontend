@@ -79,7 +79,8 @@ async function loadSavingsDetails(studentIds) {
       .then((response) => {
         let runningBalance = 0;
         const transactionsWithBalance = response.data.transactions.map((trx) => {
-          runningBalance = trx.type === "Setoran" ? runningBalance + trx.amount : runningBalance - trx.amount;
+          runningBalance =
+            trx.type === "Setoran" ? runningBalance + trx.amount : runningBalance - trx.amount;
           return { ...trx, running_balance: runningBalance };
         });
         savingsDetails.value[studentId] = {
@@ -124,17 +125,21 @@ async function handleSaveTransaction(formData) {
 }
 // TAMBAHKAN FUNGSI BARU INI
 async function handleWithdrawAndPay(paymentData) {
+  if (!studentForSaving.value) return; // Pengaman
+
   try {
-    const response = await api.post(`/students/${studentForSaving.value.id}/savings/withdraw-and-pay`, paymentData);
+    const response = await api.post(
+      `/students/${studentForSaving.value.id}/savings/withdraw-and-pay`,
+      paymentData
+    );
     savingDialog.value = false;
     showSnackbar(response.data.message);
 
     // Refresh data tabungan
-    delete savingsDetails.value[studentForSaving.value.id];
     const studentId = studentForSaving.value.id;
-    expanded.value = [];
-    setTimeout(() => expanded.value = [studentId], 100);
-    await fetchStudents(); // Refresh saldo di tabel utama
+    delete savingsDetails.value[studentId]; // Hapus cache
+    await loadSavingsDetails([studentId]); // Panggil ulang
+    await fetchStudents();
   } catch (error) {
     const message = error.response?.data?.message || "Server Error";
     showSnackbar(`Transaksi Gagal: ${message}`, "error");
@@ -151,12 +156,13 @@ function onUpdateExpanded(newExpanded) {
 
 <template>
   <SavingTransactionDialog
-  v-model="savingDialog"
-  :transaction-type="savingType"
-  :student-id="studentForSaving?.id"
-  @save="handleSaveTransaction"
-  @save-payment="handleWithdrawAndPay"
-/>
+    v-if="studentForSaving"
+    v-model="savingDialog"
+    :transaction-type="savingType"
+    :student-id="studentForSaving.id"
+    @save="handleSaveTransaction"
+    @save-payment="handleWithdrawAndPay"
+  />
 
   <v-container fluid>
     <v-card rounded="lg" border>
@@ -204,7 +210,7 @@ function onUpdateExpanded(newExpanded) {
         @update:expanded="onUpdateExpanded"
       >
         <!-- Saldo Saat Ini -->
-        <template #["item.savings_balance"]="{ item }">
+        <template #[`item.savings_balance`]="{ item }">
           <strong class="text-blue-darken-2">{{ formatCurrency(item.savings_balance) }}</strong>
         </template>
 
@@ -260,12 +266,12 @@ function onUpdateExpanded(newExpanded) {
                     class="transaction-table elevation-0"
                   >
                     <!-- Tanggal -->
-                    <template #["item.transaction_date"]="{ item }">
+                    <template #[`item.transaction_date`]="{ item }">
                       {{ formatDate(item.transaction_date) }}
                     </template>
 
                     <!-- Keterangan -->
-                    <template #["item.description"]="{ item }">
+                    <template #[`item.description`]="{ item }">
                       <div class="d-flex align-center">
                         <v-chip
                           size="x-small"
@@ -280,21 +286,21 @@ function onUpdateExpanded(newExpanded) {
                     </template>
 
                     <!-- Debit -->
-                    <template #["item.debit"]="{ item }">
+                    <template #[`item.debit`]="{ item }">
                       <span v-if="item.type === 'Penarikan'" class="text-error">
                         {{ formatCurrency(item.amount) }}
                       </span>
                     </template>
 
                     <!-- Kredit -->
-                    <template #["item.credit"]="{ item }">
+                    <template #[`item.credit`]="{ item }">
                       <span v-if="item.type === 'Setoran'" class="text-success">
                         {{ formatCurrency(item.amount) }}
                       </span>
                     </template>
 
                     <!-- Saldo berjalan -->
-                    <template #["item.running_balance"]="{ item }">
+                    <template #[`item.running_balance`]="{ item }">
                       <strong>{{ formatCurrency(item.running_balance) }}</strong>
                     </template>
                   </v-data-table>
@@ -318,12 +324,7 @@ function onUpdateExpanded(newExpanded) {
     </v-card>
   </v-container>
 
-  <v-snackbar
-    v-model="snackbar.show"
-    :color="snackbar.color"
-    :timeout="3000"
-    location="top right"
-  >
+  <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000" location="top right">
     {{ snackbar.text }}
   </v-snackbar>
 </template>
@@ -367,4 +368,3 @@ function onUpdateExpanded(newExpanded) {
   }
 }
 </style>
-

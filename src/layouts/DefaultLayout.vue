@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { RouterView, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -13,9 +13,30 @@ const route = useRoute();
 const logoutDialog = ref(false);
 const drawer = ref(true);
 const openedGroups = ref([]); // State untuk grup menu yang terbuka
+const currentTime = ref("");
 
 // --- Responsive Breakpoints ---
 const { mdAndUp, smAndDown } = useDisplay();
+
+// --- Real-time Clock ---
+let clockInterval;
+onMounted(() => {
+  updateTime();
+  clockInterval = setInterval(updateTime, 1000);
+});
+onUnmounted(() => {
+  if (clockInterval) clearInterval(clockInterval);
+});
+function updateTime() {
+  const now = new Date();
+  const jakartaTime = new Date(now.getTime() + 7 * 60 * 60 * 1000); // UTC+7
+  currentTime.value = jakartaTime.toLocaleTimeString("id-ID", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
 
 // --- Computed Properties for Drawer Logic ---
 const isAnyGroupOpen = computed(() => openedGroups.value.length > 0);
@@ -154,6 +175,8 @@ const navItems = ref([
       <template #prepend>
         <v-app-bar-nav-icon class="d-md-none" @click="drawer = !drawer" />
       </template>
+      <v-spacer />
+      <div class="text-h6 font-weight-medium">{{ currentTime }}</div>
       <v-spacer />
       <v-chip color="primary" label class="mr-4" size="small">
         Peran: <strong class="ml-1">{{ authStore.user?.role }}</strong>

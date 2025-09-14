@@ -109,10 +109,9 @@ async function handlePayment(paymentData) {
   }
 }
 
-function printReceipt() {
+async function printReceipt() {
   if (paymentIdForReceipt.value) {
-    const baseUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
-    window.open(`${baseUrl}/payments/${paymentIdForReceipt.value}/receipt`, "_blank");
+    await downloadReceipt(paymentIdForReceipt.value);
   }
   receiptDialog.value = false;
   paymentIdForReceipt.value = null;

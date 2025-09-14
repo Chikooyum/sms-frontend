@@ -145,6 +145,7 @@ function getButtonText() {
             :readonly="typeof selectedBill === 'object' && selectedBill !== null"
             required
             variant="outlined"
+            @keydown.enter="if (valid) submit();"
           ></v-text-field>
 
           <!-- [BARU] Field nomor kwitansi jika tagihan dipilih -->
