@@ -74,6 +74,9 @@ const navItems = ref([
     value: "laporan",
     children: [
       { title: "Laporan Setoran", icon: "mdi-swap-horizontal-bold", to: "/reports/handover" },
+      { title: "Riwayat Transaksi", icon: "mdi-history", to: "/history/transactions" },
+      // BATAS PENAMBAHAN KODE
+
       { title: "Laporan Absensi", icon: "mdi-calendar-check", to: "/reports/attendance" },
       {
         title: "Laporan Absensi Bulanan",

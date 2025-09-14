@@ -7,6 +7,7 @@ import MultiBillPaymentDialog from "@/components/MultiBillPaymentDialog.vue";
 // --- STATE & HELPERS BERSAMA ---
 const snackbar = ref({ show: false, text: "", color: "success" });
 const tab = ref(null); // State untuk tab yang aktif
+const baseApiUrl = computed(() => import.meta.env.VITE_API_URL || "http://127.0.0.1:8000");
 
 
 const showSnackbar = (text, color = "success") => {
@@ -370,7 +371,8 @@ onMounted(async () => {
   color="secondary"
   size="small"
   prepend-icon="mdi-receipt-text-outline"
-  @click="downloadReceipt(item.payments[0].id)"
+  :href="`${baseApiUrl}/api/receipts/${item.payments[0].receipt_number}`"
+  target="_blank"
 >
   Lihat Kwitansi
 </v-btn>

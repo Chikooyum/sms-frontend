@@ -80,6 +80,11 @@ const userInitials = computed(() => {
           to="/teacher/attendance"
         ></v-list-item>
       </v-list>
+      <v-list-item
+        prepend-icon="mdi-history"
+        title="Riwayat Transaksi"
+        to="/teacher/history"
+      ></v-list-item>
     </v-navigation-drawer>
 
     <!-- Sticky App Bar -->

@@ -26,6 +26,8 @@ import AdminAttendanceView from "../views/AdminAttendanceView.vue";
 import HolidaysView from "../views/HolidaysView.vue";
 import AttendanceReportView from "../views/AttendanceReportView.vue";
 import MonthlyAttendanceReportView from "../views/MonthlyAttendanceReportView.vue";
+import TransactionHistoryView from "../views/TransactionHistoryView.vue";
+import TeacherHistoryView from "../views/teacher/TeacherHistoryView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -115,6 +117,13 @@ const router = createRouter({
       component: MonthlyAttendanceReportView,
       meta: { layout: "DefaultLayout" },
     },
+    {
+      path: "/history/transactions",
+      name: "transaction-history",
+      component: TransactionHistoryView,
+      meta: { layout: "DefaultLayout" },
+    },
+
     // Rute Guru
     {
       path: "/teacher/my-account",
@@ -146,6 +155,13 @@ const router = createRouter({
       component: AdminAttendanceView,
       meta: { layout: "DefaultLayout" },
     },
+    {
+      path: "/teacher/history",
+      name: "teacher-history",
+      component: TeacherHistoryView,
+      meta: { layout: "TeacherLayout", role: "guru" },
+    },
+
     {
       path: "/holidays",
       name: "holidays",
