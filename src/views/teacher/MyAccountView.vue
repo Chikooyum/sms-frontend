@@ -18,6 +18,7 @@ const passwordLoading = ref(false);
 const snackbar = ref({ show: false, text: "", color: "success" });
 const scanDialog = ref(false);
 const cameraError = ref(null);
+const currentLocation = ref(null);
 
 // --- [BARU] State untuk upload foto ---
 const photoPreview = ref(null);
@@ -134,12 +135,63 @@ const onDetect = async (detectedCodes) => {
   const token = detectedCodes[0].rawValue;
   scanDialog.value = false;
   cameraError.value = null;
+
   try {
-    const response = await api.post("/teacher/attendance/check-in", { token });
+    // Use the location that was already obtained when dialog opened
+    if (!currentLocation.value) {
+      showSnackbar("Lokasi tidak tersedia. Silakan coba lagi.", "error");
+      return;
+    }
+
+    const { latitude, longitude } = currentLocation.value;
+
+    const response = await api.post("/teacher/attendance/check-in", {
+      token,
+      latitude,
+      longitude,
+    });
     showSnackbar(response.data.message, "success");
   } catch (error) {
-    showSnackbar(error.response?.data?.message || "Absen Gagal!", "error");
+    if (error.code === "LOCATION_ERROR") {
+      showSnackbar(error.message, "error");
+    } else {
+      showSnackbar(error.response?.data?.message || "Absen Gagal!", "error");
+    }
   }
+};
+
+// Get user's current geolocation
+const getCurrentPosition = () => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject({ code: "LOCATION_ERROR", message: "Geolokasi tidak didukung oleh browser ini." });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve(position),
+      (error) => {
+        let message = "Gagal mendapatkan lokasi.";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message = "Akses lokasi ditolak. Silakan izinkan akses lokasi untuk melakukan absensi.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message = "Informasi lokasi tidak tersedia.";
+            break;
+          case error.TIMEOUT:
+            message = "Waktu permintaan lokasi habis.";
+            break;
+        }
+        reject({ code: "LOCATION_ERROR", message });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutes
+      }
+    );
+  });
 };
 
 const onCameraError = (error) => {
@@ -165,8 +217,26 @@ const requestCameraPermission = async () => {
 
 const openScanDialog = async () => {
   cameraError.value = null;
-  const hasPermission = await requestCameraPermission();
-  if (hasPermission) {
+  currentLocation.value = null;
+
+  // Request location permission first
+  try {
+    const position = await getCurrentPosition();
+    currentLocation.value = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+    };
+    showSnackbar("Izin lokasi berhasil didapatkan", "success");
+  } catch (error) {
+    if (error.code === "LOCATION_ERROR") {
+      showSnackbar(error.message, "error");
+      return; // Don't open dialog if location permission denied
+    }
+  }
+
+  // Then request camera permission
+  const hasCameraPermission = await requestCameraPermission();
+  if (hasCameraPermission) {
     scanDialog.value = true;
   }
 };

@@ -16,12 +16,12 @@
     "src": "node_modules/@mdi/font/fonts/materialdesignicons-webfont.woff2"
   },
   "src/main.js": {
-    "file": "assets/main-Ccg8ghRy.js",
+    "file": "assets/main-zsMPwXZU.js",
     "name": "main",
     "src": "src/main.js",
     "isEntry": true,
     "css": [
-      "assets/main-DeMwnsaP.css"
+      "assets/main-BnRo8zW2.css"
     ],
     "assets": [
       "assets/materialdesignicons-webfont-CSr8KVlo.eot",
