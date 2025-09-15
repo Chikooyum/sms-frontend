@@ -6,6 +6,7 @@ const props = defineProps({
   modelValue: Boolean,
   billsToPay: { type: Array, default: () => [] },
   totalAmount: { type: Number, default: 0 },
+  paymentAmount: { type: Number, default: 0 },
 });
 const emit = defineEmits(["update:modelValue", "save"]);
 
@@ -31,7 +32,7 @@ watch(
   }
 );
 
-const submit = () => emit("save", receiptNumber.value);
+const submit = () => emit("save", receiptNumber.value, props.paymentAmount || props.totalAmount);
 const close = () => emit("update:modelValue", false);
 const formatCurrency = (value) =>
   new Intl.NumberFormat("id-ID", {
@@ -53,7 +54,7 @@ const formatCurrency = (value) =>
           </v-list-item>
         </v-list>
         <v-divider class="my-3"></v-divider>
-        <div class="text-h6">Total Bayar: {{ formatCurrency(totalAmount) }}</div>
+        <div class="text-h6">Total Bayar: {{ formatCurrency(paymentAmount || totalAmount) }}</div>
         <v-form v-model="valid" class="mt-4">
           <v-text-field
             v-model="receiptNumber"

@@ -104,9 +104,15 @@ const navItems = ref([
         icon: "mdi-chart-bar",
         to: "/reports/attendance/monthly",
       },
+      {
+        title: "Laporan Absensi Staf",
+        icon: "mdi-account-group-outline",
+        to: "/reports/staff-attendance",
+      },
     ],
   },
   { title: "Atur Hari Libur", icon: "mdi-calendar-star", to: "/holidays" },
+  { title: "Generate QR Absen", icon: "mdi-qrcode", to: "/admin/qr-attendance" },
 ]);
 </script>
 

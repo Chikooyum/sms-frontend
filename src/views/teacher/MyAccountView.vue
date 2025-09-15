@@ -4,6 +4,7 @@
 import { ref, reactive, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import api from "@/services/api";
+import { QrcodeStream } from "vue-qrcode-reader";
 
 const authStore = useAuthStore();
 
@@ -15,6 +16,8 @@ const passwordFormValid = ref(false);
 const profileLoading = ref(false);
 const passwordLoading = ref(false);
 const snackbar = ref({ show: false, text: "", color: "success" });
+const scanDialog = ref(false);
+const cameraError = ref(null);
 
 // --- [BARU] State untuk upload foto ---
 const photoPreview = ref(null);
@@ -126,6 +129,47 @@ async function handlePasswordChange() {
     passwordLoading.value = false;
   }
 }
+
+const onDetect = async (detectedCodes) => {
+  const token = detectedCodes[0].rawValue;
+  scanDialog.value = false;
+  cameraError.value = null;
+  try {
+    const response = await api.post("/teacher/attendance/check-in", { token });
+    showSnackbar(response.data.message, "success");
+  } catch (error) {
+    showSnackbar(error.response?.data?.message || "Absen Gagal!", "error");
+  }
+};
+
+const onCameraError = (error) => {
+  console.error("Camera error:", error);
+  cameraError.value = error.message || "Gagal mengakses kamera";
+  showSnackbar("Gagal mengakses kamera. Pastikan Anda memberikan izin akses kamera.", "error");
+};
+
+const requestCameraPermission = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    stream.getTracks().forEach((track) => track.stop()); // Stop the stream immediately
+    return true;
+  } catch (error) {
+    console.error("Camera permission denied:", error);
+    showSnackbar(
+      "Izin akses kamera ditolak. Silakan izinkan akses kamera di browser Anda.",
+      "error"
+    );
+    return false;
+  }
+};
+
+const openScanDialog = async () => {
+  cameraError.value = null;
+  const hasPermission = await requestCameraPermission();
+  if (hasPermission) {
+    scanDialog.value = true;
+  }
+};
 </script>
 
 <template>
@@ -137,6 +181,46 @@ async function handlePasswordChange() {
       accept="image/*"
       style="display: none"
     />
+
+    <v-dialog v-model="scanDialog" max-width="500">
+      <v-card title="Pindai QR Code Absensi">
+        <div v-if="cameraError" class="pa-4 text-center">
+          <v-icon size="48" color="error" class="mb-2">mdi-camera-off</v-icon>
+          <div class="text-h6 mb-2">Kamera Tidak Tersedia</div>
+          <div class="text-body-2 mb-4">{{ cameraError }}</div>
+          <v-btn
+            color="primary"
+            @click="
+              cameraError = null;
+              requestCameraPermission();
+            "
+          >
+            Coba Lagi
+          </v-btn>
+        </div>
+        <QrcodeStream
+          v-else
+          @detect="onDetect"
+          @error="onCameraError"
+          :constraints="{ video: { facingMode: 'environment' } }"
+        ></QrcodeStream>
+        <v-card-actions><v-btn block @click="scanDialog = false">Batal</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-row>
+      <v-col cols="12">
+        <v-btn
+          block
+          color="primary"
+          size="large"
+          @click="openScanDialog"
+          prepend-icon="mdi-qrcode-scan"
+        >
+          Lakukan Absensi Sekarang
+        </v-btn>
+      </v-col>
+    </v-row>
 
     <v-row>
       <v-col cols="12" md="6">

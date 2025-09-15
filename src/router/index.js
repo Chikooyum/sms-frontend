@@ -28,6 +28,8 @@ import AttendanceReportView from "../views/AttendanceReportView.vue";
 import MonthlyAttendanceReportView from "../views/MonthlyAttendanceReportView.vue";
 import TransactionHistoryView from "../views/TransactionHistoryView.vue";
 import TeacherHistoryView from "../views/teacher/TeacherHistoryView.vue";
+import StaffAttendanceReportView from "../views/StaffAttendanceReportView.vue";
+import QrCodeGeneratorView from "../views/QrCodeGeneratorView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -118,6 +120,12 @@ const router = createRouter({
       meta: { layout: "DefaultLayout" },
     },
     {
+      path: "/reports/staff-attendance",
+      name: "staff-attendance-report",
+      component: StaffAttendanceReportView,
+      meta: { layout: "DefaultLayout" },
+    },
+    {
       path: "/history/transactions",
       name: "transaction-history",
       component: TransactionHistoryView,
@@ -153,6 +161,12 @@ const router = createRouter({
       path: "/admin/attendance/:classId",
       name: "admin-attendance",
       component: AdminAttendanceView,
+      meta: { layout: "DefaultLayout" },
+    },
+    {
+      path: "/admin/qr-attendance",
+      name: "qr-attendance-generator",
+      component: QrCodeGeneratorView,
       meta: { layout: "DefaultLayout" },
     },
     {

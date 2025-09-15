@@ -59,6 +59,21 @@ function isDateDisabled(date) {
 }
 
 /**
+ * Get color for attendance status
+ * @param {string} status - Attendance status
+ * @returns {string} Color name
+ */
+function getStatusColor(status) {
+  const colors = {
+    Hadir: "success",
+    Sakit: "warning",
+    Izin: "info",
+    Alpa: "error",
+  };
+  return colors[status] || "grey";
+}
+
+/**
  * Mengubah objek Date atau string menjadi format YYYY-MM-DD.
  * @param {Date|string} date - Tanggal yang akan diformat.
  * @returns {string|null} Tanggal dalam format YYYY-MM-DD atau null jika tidak valid.
@@ -134,11 +149,20 @@ async function fetchAttendanceSheet() {
   errorMsg.value = "";
   const dateString = formatDateToString(selectedDate.value);
 
+  console.log("=== ATTENDANCE FETCH DEBUG ===");
+  console.log("Selected class ID:", selectedClassId.value);
+  console.log("Selected date:", dateString);
+  console.log("Is holiday:", isHoliday.value);
+
   try {
     // Langkah 1: Ambil data absensi (skip holiday check via API karena sudah dicek di atas)
     const resp = await api.get(`/teacher/attendance-sheet/${selectedClassId.value}`, {
       params: { date: dateString },
     });
+
+    console.log("API Response:", resp.data);
+    console.log("Students count:", resp.data.students?.length || 0);
+    console.log("Class group:", resp.data.class_group);
 
     isEditing.value = resp.data.is_existing_data;
     attendanceSheet.classGroup = resp.data.class_group;
@@ -148,6 +172,9 @@ async function fetchAttendanceSheet() {
       status: s.status || statuses[0], // Default ke "Hadir"
       notes: s.notes || "",
     }));
+
+    console.log("Processed students:", attendanceSheet.students.length);
+    console.log("=== END ATTENDANCE DEBUG ===");
   } catch (e) {
     console.error("Fetch attendance sheet error:", e);
     errorMsg.value = e.response?.data?.message || "Gagal memuat data absensi.";
@@ -232,12 +259,16 @@ onMounted(initialFetch);
 
 <template>
   <v-card :loading="loading">
-    <v-card-title class="d-flex justify-space-between align-center flex-wrap">
-      <div>
-        Absensi Harian
-        <v-card-subtitle>{{ formattedDate }}</v-card-subtitle>
+    <v-card-title
+      class="d-flex flex-column flex-md-row justify-space-between align-start align-md-center gap-3"
+    >
+      <div class="flex-grow-1">
+        <div class="text-h6 text-md-h5 mb-1">Absensi Harian</div>
+        <div class="text-subtitle-1 text-md-subtitle-1 text-grey-darken-1">{{ formattedDate }}</div>
       </div>
-      <div class="d-flex align-center mt-2 mt-md-0">
+      <div
+        class="d-flex flex-column flex-sm-row align-stretch align-sm-center gap-2 w-100 w-md-auto"
+      >
         <v-select
           v-if="teacherClasses.length > 1"
           v-model="selectedClassId"
@@ -247,8 +278,9 @@ onMounted(initialFetch);
           label="Pilih Kelas"
           density="compact"
           hide-details
-          style="max-width: 250px"
-          class="mr-4"
+          variant="outlined"
+          class="flex-grow-1 flex-md-grow-0"
+          style="min-width: 200px; max-width: 250px"
           :disabled="loading"
         ></v-select>
 
@@ -261,9 +293,10 @@ onMounted(initialFetch);
               v-bind="props"
               density="compact"
               hide-details
-              style="max-width: 220px"
-              class="mr-4"
+              variant="outlined"
               prepend-inner-icon="mdi-calendar"
+              class="flex-grow-1 flex-md-grow-0"
+              style="min-width: 180px; max-width: 220px"
             ></v-text-field>
           </template>
           <v-date-picker
@@ -276,18 +309,30 @@ onMounted(initialFetch);
           ></v-date-picker>
         </v-menu>
 
-        <v-btn
-          color="primary"
-          :loading="saving"
-          @click="saveAttendance"
-          :disabled="!selectedClassId || isHoliday || attendanceSheet.students.length === 0"
-        >
-          {{ actionLabel }}
-        </v-btn>
+        <div class="d-flex gap-2 w-100 w-md-auto">
+          <v-btn
+            color="primary"
+            :loading="saving"
+            @click="saveAttendance"
+            :disabled="!selectedClassId || isHoliday || attendanceSheet.students.length === 0"
+            class="flex-grow-1 flex-md-grow-0"
+            size="default"
+          >
+            <v-icon start class="d-none d-sm-inline">mdi-content-save</v-icon>
+            {{ actionLabel }}
+          </v-btn>
 
-        <v-btn color="secondary" variant="outlined" @click="refreshHolidays" class="ml-2">
-          Refresh Kalender
-        </v-btn>
+          <v-btn
+            color="secondary"
+            variant="outlined"
+            @click="refreshHolidays"
+            size="default"
+            class="flex-grow-1 flex-md-grow-0"
+          >
+            <v-icon start class="d-none d-sm-inline">mdi-refresh</v-icon>
+            Refresh
+          </v-btn>
+        </div>
       </div>
     </v-card-title>
 
@@ -311,7 +356,8 @@ onMounted(initialFetch);
     </v-card-text>
 
     <template v-else-if="selectedClassId">
-      <div v-if="isDesktop && !errorMsg">
+      <!-- Desktop Table View -->
+      <div v-if="isDesktop && !errorMsg" class="px-4">
         <v-data-table
           :headers="[
             { title: 'Nama Siswa', key: 'name', width: '40%' },
@@ -320,9 +366,10 @@ onMounted(initialFetch);
           ]"
           :items="attendanceSheet.students"
           :loading="loadingSheet"
-          density="compact"
-          fixed-header
-          height="60vh"
+          density="comfortable"
+          hide-default-footer
+          :items-per-page="-1"
+          class="elevation-1"
         >
           <template #item.status="{ item }">
             <v-btn-toggle
@@ -331,6 +378,7 @@ onMounted(initialFetch);
               variant="outlined"
               mandatory
               divided
+              density="compact"
             >
               <v-btn v-for="st in statuses" :key="st" :value="st" size="small">{{ st }}</v-btn>
             </v-btn-toggle>
@@ -341,56 +389,91 @@ onMounted(initialFetch);
               hide-details
               density="compact"
               placeholder="Catatan..."
+              variant="outlined"
             />
           </template>
           <template #no-data>
-            <div class="text-center py-8">
-              <v-icon color="grey" size="36">mdi-account-off</v-icon>
-              <div class="mt-2 text-medium-emphasis">Tidak ada siswa untuk ditampilkan.</div>
+            <div class="text-center py-12">
+              <v-icon color="grey" size="48">mdi-account-off</v-icon>
+              <div class="mt-3 text-h6 text-grey-darken-1">Tidak ada siswa</div>
+              <div class="text-grey-darken-2">Tidak ada siswa untuk ditampilkan di kelas ini.</div>
             </div>
           </template>
         </v-data-table>
       </div>
 
-      <div v-else-if="!isDesktop && !errorMsg" class="pa-4">
-        <v-skeleton-loader v-if="loadingSheet" type="list-item-avatar-two-line@6" />
+      <!-- Mobile/Tablet Card View -->
+      <div v-else-if="!isDesktop && !errorMsg" class="px-2 px-sm-4">
+        <v-skeleton-loader v-if="loadingSheet" type="card@6" class="mb-4" />
+
         <template v-else>
           <v-alert v-if="!attendanceSheet.students.length" type="info" variant="tonal" class="mb-4">
+            <v-icon start>mdi-information</v-icon>
             Tidak ada siswa untuk ditampilkan di kelas ini.
           </v-alert>
-          <v-expansion-panels v-else variant="accordion">
-            <v-expansion-panel v-for="s in attendanceSheet.students" :key="s.id">
-              <v-expansion-panel-title>
-                {{ s.name }}
-                <v-spacer></v-spacer>
-                <v-chip size="small" :color="s.status === 'Hadir' ? 'primary' : 'default'">
-                  {{ s.status }}
-                </v-chip>
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <div class="mb-3">
+
+          <div v-else class="attendance-cards">
+            <v-card
+              v-for="student in attendanceSheet.students"
+              :key="student.id"
+              class="mb-3"
+              variant="outlined"
+              rounded="lg"
+            >
+              <v-card-item>
+                <div class="d-flex align-center justify-space-between w-100">
+                  <div class="flex-grow-1">
+                    <div class="text-subtitle-1 font-weight-medium mb-1">{{ student.name }}</div>
+                    <v-chip
+                      size="small"
+                      :color="getStatusColor(student.status)"
+                      variant="flat"
+                      class="text-capitalize"
+                    >
+                      {{ student.status }}
+                    </v-chip>
+                  </div>
+                  <v-btn icon="mdi-chevron-down" variant="text" size="small" class="ml-2"></v-btn>
+                </div>
+              </v-card-item>
+
+              <v-divider></v-divider>
+
+              <v-card-text class="pt-4">
+                <div class="mb-4">
+                  <label class="text-caption text-grey-darken-1 mb-2 d-block"
+                    >Status Kehadiran</label
+                  >
                   <v-btn-toggle
-                    v-model="s.status"
+                    v-model="student.status"
                     color="primary"
                     variant="outlined"
                     mandatory
                     divided
+                    density="comfortable"
                     class="w-100"
                   >
-                    <v-btn v-for="st in statuses" :key="st" :value="st" size="small">{{
-                      st
-                    }}</v-btn>
+                    <v-btn v-for="st in statuses" :key="st" :value="st" class="flex-grow-1">
+                      {{ st }}
+                    </v-btn>
                   </v-btn-toggle>
                 </div>
-                <v-text-field
-                  v-model="s.notes"
-                  hide-details
-                  density="compact"
-                  placeholder="Catatan singkat..."
-                />
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
+
+                <div>
+                  <label class="text-caption text-grey-darken-1 mb-2 d-block">Catatan</label>
+                  <v-text-field
+                    v-model="student.notes"
+                    hide-details
+                    density="comfortable"
+                    placeholder="Tambahkan catatan..."
+                    variant="outlined"
+                    rows="2"
+                    class="mb-2"
+                  />
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
         </template>
       </div>
     </template>
@@ -403,17 +486,87 @@ onMounted(initialFetch);
 </template>
 
 <style scoped>
-/* Style untuk responsivitas header */
-@media (max-width: 768px) {
+/* Mobile-first responsive design */
+.attendance-cards {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 600px) {
   .v-card-title {
-    flex-direction: column;
-    align-items: flex-start;
+    padding: 16px !important;
   }
-  .v-card-title > div:last-child {
-    width: 100%;
-    margin-top: 16px;
-    flex-wrap: wrap;
-    gap: 8px;
+
+  .v-card-title .text-h6 {
+    font-size: 1.25rem !important;
+    line-height: 1.4;
   }
+
+  .attendance-cards .v-card {
+    margin-bottom: 12px;
+    border-radius: 12px !important;
+  }
+
+  .attendance-cards .v-card-item {
+    padding: 16px !important;
+  }
+
+  .attendance-cards .v-card-text {
+    padding: 16px !important;
+  }
+
+  .v-btn-toggle .v-btn {
+    font-size: 0.875rem;
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 960px) {
+  .v-card-title {
+    padding: 20px !important;
+  }
+
+  .v-card-title > div:first-child {
+    margin-bottom: 16px;
+  }
+
+  .attendance-cards {
+    max-height: 60vh;
+  }
+}
+
+/* Desktop enhancements */
+@media (min-width: 961px) {
+  .v-data-table {
+    border-radius: 8px;
+  }
+
+  .v-data-table .v-data-table__td,
+  .v-data-table .v-data-table__th {
+    padding: 12px 16px;
+  }
+}
+
+/* Status color improvements */
+.v-chip--variant-flat {
+  font-weight: 500;
+}
+
+/* Button improvements */
+.v-btn-toggle {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.v-btn-toggle .v-btn {
+  border-radius: 0;
+  transition: all 0.2s ease;
+}
+
+.v-btn-toggle .v-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 </style>

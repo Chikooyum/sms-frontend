@@ -4,7 +4,7 @@ import api from "@/services/api";
 
 const props = defineProps({
   modelValue: Boolean,
-  bill: { type: Object, default: () => ({}) },
+  bill: { type: [Object, Array], default: () => ({}) },
 });
 const emit = defineEmits(["update:modelValue", "save"]);
 
@@ -17,7 +17,11 @@ watch(
   () => props.modelValue,
   async (isOpen) => {
     if (isOpen) {
-      amountPaid.value = props.bill.remaining_amount;
+      // Calculate total amount for single or multiple bills
+      const bills = Array.isArray(props.bill) ? props.bill : [props.bill];
+      const totalAmount = bills.reduce((sum, b) => sum + parseFloat(b.remaining_amount || 0), 0);
+      amountPaid.value = totalAmount;
+
       receiptNumber.value = "";
       latestReceiptNumber.value = ""; // Reset hint
 
@@ -49,22 +53,44 @@ watch(
 
 const rules = {
   required: (value) => !!value || "Field ini harus diisi.",
-  max: (value) => value <= props.bill.remaining_amount || "Pembayaran melebihi sisa tagihan.",
+  max: (value) => {
+    const bills = Array.isArray(props.bill) ? props.bill : [props.bill];
+    const totalAmount = bills.reduce((sum, b) => sum + parseFloat(b.remaining_amount || 0), 0);
+    return value <= totalAmount || "Pembayaran melebihi sisa tagihan.";
+  },
   min: (value) => value > 0 || "Jumlah harus lebih dari 0.",
 };
 
 function submit() {
-  const paymentData = {
-    student_bill_id: props.bill.id,
-    amount_paid: amountPaid.value,
-    receipt_number: receiptNumber.value,
-  };
-  emit("save", paymentData);
+  const bills = Array.isArray(props.bill) ? props.bill : [props.bill];
+
+  if (bills.length === 1) {
+    // Single bill payment
+    const paymentData = {
+      student_bill_id: bills[0].id,
+      amount_paid: amountPaid.value,
+      receipt_number: receiptNumber.value,
+    };
+    emit("save", paymentData);
+  } else {
+    // Multiple bills payment
+    const paymentData = {
+      student_bill_ids: bills.map((b) => b.id),
+      amount_paid: amountPaid.value,
+      receipt_number: receiptNumber.value,
+    };
+    emit("save", paymentData);
+  }
 }
 
 function close() {
   emit("update:modelValue", false);
 }
+
+const calculateTotalAmount = () => {
+  const bills = Array.isArray(props.bill) ? props.bill : [props.bill];
+  return bills.reduce((sum, b) => sum + parseFloat(b.remaining_amount || 0), 0);
+};
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("id-ID", {
@@ -78,10 +104,28 @@ const formatCurrency = (value) =>
   <v-dialog :model-value="modelValue" @update:model-value="close" max-width="500px">
     <v-card>
       <v-card-title>Proses Pembayaran</v-card-title>
-      <v-card-subtitle>{{ bill.cost_item?.name }}</v-card-subtitle>
+      <v-card-subtitle>
+        <span v-if="Array.isArray(bill)"> {{ bill.length }} Tagihan Terpilih </span>
+        <span v-else>
+          {{ bill.cost_item?.name }}
+        </span>
+      </v-card-subtitle>
       <v-card-text>
+        <div v-if="Array.isArray(bill)" class="mb-4">
+          <p><strong>Tagihan yang dipilih:</strong></p>
+          <v-list density="compact" class="mb-2">
+            <v-list-item v-for="b in bill" :key="b.id" class="pa-1">
+              <v-list-item-title class="text-body-2">{{ b.cost_item?.name }}</v-list-item-title>
+              <template #append>
+                <span class="text-body-2">{{ formatCurrency(b.remaining_amount || 0) }}</span>
+              </template>
+            </v-list-item>
+          </v-list>
+        </div>
         <p class="mb-4">
-          Sisa Tagihan: <strong>{{ formatCurrency(bill.remaining_amount || 0) }}</strong>
+          <span v-if="Array.isArray(bill)">Total Sisa Tagihan:</span>
+          <span v-else>Sisa Tagihan:</span>
+          <strong>{{ formatCurrency(calculateTotalAmount()) }}</strong>
         </p>
         <v-form v-model="valid">
           <v-text-field
